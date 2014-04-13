@@ -20,6 +20,8 @@ jQuery(document).ready(function() {
     bootstrap();
 });
 
+var characters = [];
+
 function keyDown(event) {
     switch(event.keyCode) {
         case KEYCODE_LEFT:
