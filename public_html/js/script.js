@@ -168,14 +168,14 @@ function keyUp(event) {
 
 function serverUpdateVelocity() {
     socket.emit('update-velocity', {
-        "id": player.id,
+        "id": player.character_id,
         "velocity": player.velocity
     });
 }
 
 function serverUpdatePosition() {
     socket.emit('update-position', {
-        "id": player.id,
+        "id": player.character_id,
         "position": player.position()
     });
 }
