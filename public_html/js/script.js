@@ -68,7 +68,7 @@ function loadDoneHandler() {
     
     socket = io.connect('http://localhost:7777');
     socket.on('identify', function (id) {
-        player = addNewCharacter(id, 50,50,0,0);
+        player = addNewCharacter(id, 50,50,0,0,"");
         serverUpdatePosition();
         
         setInterval(function() {
@@ -81,7 +81,8 @@ function loadDoneHandler() {
             data.position.x,
             data.position.y,
             data.velocity.x,
-            data.velocity.y
+            data.velocity.y,
+            data.nickname
         );
     });
     socket.on('remove-player', function (data) {
@@ -99,6 +100,10 @@ function loadDoneHandler() {
         var char = characters[data.id];
         char.x = data.position.x;
         char.y = data.position.y;
+    });
+    socket.on('update-nickname', function (data) {
+        var char = characters[data.id];
+        char.updateNickname(data.nickname);
     });
     
     createjs.Ticker.timingMode = createjs.Ticker.RAF;
@@ -187,10 +192,11 @@ function processVelocity() {
     }
 }
 
-function addNewCharacter(id, posX, posY, velX, velY) {
+function addNewCharacter(id, posX, posY, velX, velY, nickname) {
     var char = new Agriculture.Character();
     char.initialize(id, char_spritesheet, "down", velX, velY);
     char.setTransform(posX,posY,1,1);
+    char.updateNickname(nickname);
     char.framerate = 10;
     stage.addChild(char);
     
