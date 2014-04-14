@@ -97,8 +97,8 @@ function loadDoneHandler() {
     });
     socket.on('update-position', function (data) {
         var char = characters[data.id];
-        char.sprite.x = data.position.x;
-        char.sprite.y = data.position.y;
+        char.x = data.position.x;
+        char.y = data.position.y;
     });
     
     createjs.Ticker.timingMode = createjs.Ticker.RAF;
@@ -182,18 +182,17 @@ function serverUpdatePosition() {
 
 function processVelocity() {
     for(char in characters) {
-        characters[char].sprite.y += characters[char].velocity.y;
-        characters[char].sprite.x += characters[char].velocity.x;
+        characters[char].y += characters[char].velocity.y;
+        characters[char].x += characters[char].velocity.x;
     }
 }
 
 function addNewCharacter(id, posX, posY, velX, velY) {
-    var sprite = new createjs.Sprite(char_spritesheet, "down");
-    
-    var char = new Agriculture.Character(id, sprite, velX, velY);
-    char.sprite.setTransform(posX,posY,1,1);
-    char.sprite.framerate = 10;
-    stage.addChild(char.sprite);
+    var char = new Agriculture.Character();
+    char.initialize(id, char_spritesheet, "down", velX, velY);
+    char.setTransform(posX,posY,1,1);
+    char.framerate = 10;
+    stage.addChild(char);
     
     characters[id] = char;
     
@@ -202,7 +201,7 @@ function addNewCharacter(id, posX, posY, velX, velY) {
 
 function removeCharacter(id) {
     var char = characters[id];
-    stage.removeChild(char.sprite);
+    stage.removeChild(char);
     delete characters[id];
 }
 
