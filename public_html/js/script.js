@@ -1,8 +1,9 @@
 
 var stage = null;
+var socket = null;
 
-var charX = 0;
-var charY = 0;
+var characters = [];
+var player = null;
 
 var KEYCODE_LEFT = 37, 
         KEYCODE_RIGHT = 39,
@@ -11,90 +12,20 @@ var KEYCODE_LEFT = 37,
 
 var MOVEMENT_SPEED = 5;
 
+var VELOCITY_PROCESS_INTERVAL = 50;
+var POSITION_HEARTBEAT_INTERVAL = 500;
+
 var char_spritesheet;
 
+//============================================
+//INIT
+//============================================
 jQuery(document).ready(function() {
     bootstrap();
 });
 
-var characters = [];
-
-function keyDown(event) {
-    switch(event.keyCode) {
-        case KEYCODE_LEFT:
-                if(!character.bLeft) {
-                    character.sprite.gotoAndPlay("run_left");
-                    character.bLeft = true;
-                }
-                break;
-        case KEYCODE_RIGHT: 
-                if(!character.bRight) {
-                    character.sprite.gotoAndPlay("run_right");
-                    character.bRight = true;
-                }
-                break;
-        case KEYCODE_UP: 
-                if(!character.bUp) {
-                    character.sprite.gotoAndPlay("run_up");
-                    character.bUp = true;
-                }
-                break;
-        case KEYCODE_DOWN: 
-                if(!character.bDown) {
-                    character.sprite.gotoAndPlay("run_down");
-                    character.bDown = true;
-                }
-                break;
-    }
-}
-
-function isMoving() {
-    return character.bUp || character.bDown || character.bRight || character.bLeft;
-}
-
-function keyUp(event) {
-    switch(event.keyCode) {
-        case KEYCODE_LEFT:
-                character.bLeft = false;
-                if(!isMoving())
-                    character.sprite.gotoAndStop("left");
-                break;
-        case KEYCODE_RIGHT: 
-                character.bRight = false;
-                if(!isMoving())
-                    character.sprite.gotoAndStop("right");
-                break;
-        case KEYCODE_UP: 
-                character.bUp = false;
-                if(!isMoving())
-                    character.sprite.gotoAndStop("up");
-                break;
-        case KEYCODE_DOWN: 
-                character.bDown = false;
-                if(!isMoving())
-                    character.sprite.gotoAndStop("down");
-                break;
-    }
-}
-
-
-function processInput() {
-    for(char in characters) {
-        if(characters[char].bUp) {
-            characters[char].sprite.y -= MOVEMENT_SPEED;
-        } else if(characters[char].bDown) {
-            characters[char].sprite.y += MOVEMENT_SPEED;
-        }
-
-        if(characters[char].bRight) {
-            characters[char].sprite.x += MOVEMENT_SPEED;
-        } else if(characters[char].bLeft) {
-            characters[char].sprite.x -= MOVEMENT_SPEED;
-        }
-    }
-}
-
 function bootstrap() {
+    
     stage = new createjs.Stage("game");
 
     // grab canvas width and height for later calculations:
@@ -113,8 +44,8 @@ function bootstrap() {
     this.document.onkeydown = keyDown;
     
     setInterval(function() {
-        processInput();
-    }, 50);
+        processVelocity();
+    }, VELOCITY_PROCESS_INTERVAL);
 }
 
 function loadDoneHandler() {
@@ -134,23 +65,145 @@ function loadDoneHandler() {
         }
     });
     
-    character = addNewCharacter(50,50);
+    
+    socket = io.connect('http://localhost:7777');
+    socket.on('identify', function (id) {
+        player = addNewCharacter(id, 50,50,0,0);
+        serverUpdatePosition();
+        
+        setInterval(function() {
+            serverUpdatePosition();
+        }, POSITION_HEARTBEAT_INTERVAL);
+    });
+    socket.on('add-player', function (data) {
+        addNewCharacter(
+            data.id,
+            data.position.x,
+            data.position.y,
+            data.velocity.x,
+            data.velocity.y
+        );
+    });
+    socket.on('remove-player', function (data) {
+        removeCharacter(data.id);
+    });
+    socket.on('update-velocity', function (data) {
+        var char = characters[data.id];
+        char.velocity = {
+            "x": data.velocity.x,
+            "y": data.velocity.y
+        }
+        char.refreshSprite();
+    });
+    socket.on('update-position', function (data) {
+        var char = characters[data.id];
+        char.sprite.x = data.position.x;
+        char.sprite.y = data.position.y;
+    });
     
     createjs.Ticker.timingMode = createjs.Ticker.RAF;
     createjs.Ticker.addEventListener("tick", tick);
 }
+//============================================
+//============================================
 
-function addNewCharacter(posX, posY) {
+
+function keyDown(event) {
+    switch(event.keyCode) {
+        case KEYCODE_LEFT:
+                if(player.velocity.x === 0) {
+                    player.velocity.x = -MOVEMENT_SPEED;
+                    serverUpdateVelocity();
+                    player.refreshSprite();
+                }
+                break;
+        case KEYCODE_RIGHT: 
+                if(player.velocity.x === 0) {
+                    player.velocity.x = MOVEMENT_SPEED;
+                    serverUpdateVelocity();
+                    player.refreshSprite();
+                }
+                break;
+        case KEYCODE_UP: 
+                if(player.velocity.y === 0) {
+                    player.velocity.y = -MOVEMENT_SPEED;
+                    serverUpdateVelocity();
+                    player.refreshSprite();
+                }
+                break;
+        case KEYCODE_DOWN: 
+                if(player.velocity.y === 0) {
+                    player.velocity.y = MOVEMENT_SPEED;
+                    serverUpdateVelocity();
+                    player.refreshSprite();
+                }
+                break;
+    }
+}
+
+function keyUp(event) {
+    switch(event.keyCode) {
+        case KEYCODE_LEFT:
+                player.velocity.x = 0;
+                serverUpdateVelocity();
+                player.refreshSprite();
+                break;
+        case KEYCODE_RIGHT: 
+                player.velocity.x = 0;
+                serverUpdateVelocity();
+                player.refreshSprite();
+                break;
+        case KEYCODE_UP: 
+                player.velocity.y = 0;
+                serverUpdateVelocity();
+                player.refreshSprite();
+                break;
+        case KEYCODE_DOWN: 
+                player.velocity.y = 0;
+                serverUpdateVelocity();
+                player.refreshSprite();
+                break;
+    }
+}
+
+function serverUpdateVelocity() {
+    socket.emit('update-velocity', {
+        "id": player.id,
+        "velocity": player.velocity
+    });
+}
+
+function serverUpdatePosition() {
+    socket.emit('update-position', {
+        "id": player.id,
+        "position": player.position()
+    });
+}
+
+function processVelocity() {
+    for(char in characters) {
+        characters[char].sprite.y += characters[char].velocity.y;
+        characters[char].sprite.x += characters[char].velocity.x;
+    }
+}
+
+function addNewCharacter(id, posX, posY, velX, velY) {
     var sprite = new createjs.Sprite(char_spritesheet, "down");
     
-    var char = new Agriculture.Character(sprite);
-    char.sprite.setTransform(posX ,posY,1,1);
+    var char = new Agriculture.Character(id, sprite, velX, velY);
+    char.sprite.setTransform(posX,posY,1,1);
     char.sprite.framerate = 10;
     stage.addChild(char.sprite);
     
-    characters.push(char);
+    characters[id] = char;
     
     return char;
+}
+
+function removeCharacter(id) {
+    var char = characters[id];
+    stage.removeChild(char.sprite);
+    delete characters[id];
 }
 
 function tick(event) {
