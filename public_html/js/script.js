@@ -11,10 +11,7 @@ var KEYCODE_LEFT = 37,
 
 var MOVEMENT_SPEED = 5;
 
-var bUp = false, 
-        bDown = false, 
-        bLeft = false, 
-        bRight = false;
+var char_spritesheet;
 
 jQuery(document).ready(function() {
     bootstrap();
@@ -25,73 +22,75 @@ var characters = [];
 function keyDown(event) {
     switch(event.keyCode) {
         case KEYCODE_LEFT:
-                if(!bLeft) {
+                if(!character.bLeft) {
                     character.sprite.gotoAndPlay("run_left");
-                    bLeft = true;
+                    character.bLeft = true;
                 }
                 break;
         case KEYCODE_RIGHT: 
-                if(!bRight) {
+                if(!character.bRight) {
                     character.sprite.gotoAndPlay("run_right");
-                    bRight = true;
+                    character.bRight = true;
                 }
                 break;
         case KEYCODE_UP: 
-                if(!bUp) {
+                if(!character.bUp) {
                     character.sprite.gotoAndPlay("run_up");
-                    bUp = true;
+                    character.bUp = true;
                 }
                 break;
         case KEYCODE_DOWN: 
-                if(!bDown) {
+                if(!character.bDown) {
                     character.sprite.gotoAndPlay("run_down");
-                    bDown = true;
+                    character.bDown = true;
                 }
                 break;
     }
 }
 
 function isMoving() {
-    return bUp || bDown || bRight || bLeft;
+    return character.bUp || character.bDown || character.bRight || character.bLeft;
 }
 
 function keyUp(event) {
     switch(event.keyCode) {
         case KEYCODE_LEFT:
-                bLeft = false;
+                character.bLeft = false;
                 if(!isMoving())
-                    character.sprite.gotoAndPlay("left");
+                    character.sprite.gotoAndStop("left");
                 break;
         case KEYCODE_RIGHT: 
-                bRight = false;
+                character.bRight = false;
                 if(!isMoving())
-                    character.sprite.gotoAndPlay("right");
+                    character.sprite.gotoAndStop("right");
                 break;
         case KEYCODE_UP: 
-                bUp = false;
+                character.bUp = false;
                 if(!isMoving())
-                    character.sprite.gotoAndPlay("up");
+                    character.sprite.gotoAndStop("up");
                 break;
         case KEYCODE_DOWN: 
-                bDown = false;
+                character.bDown = false;
                 if(!isMoving())
-                    character.sprite.gotoAndPlay("down");
+                    character.sprite.gotoAndStop("down");
                 break;
     }
 }
 
 
 function processInput() {
-    if(bUp) {
-        character.sprite.y -= MOVEMENT_SPEED;
-    } else if(bDown) {
-        character.sprite.y += MOVEMENT_SPEED;
-    }
-    
-    if(bRight) {
-        character.sprite.x += MOVEMENT_SPEED;
-    } else if(bLeft) {
-        character.sprite.x -= MOVEMENT_SPEED;
+    for(char in characters) {
+        if(characters[char].bUp) {
+            characters[char].sprite.y -= MOVEMENT_SPEED;
+        } else if(characters[char].bDown) {
+            characters[char].sprite.y += MOVEMENT_SPEED;
+        }
+
+        if(characters[char].bRight) {
+            characters[char].sprite.x += MOVEMENT_SPEED;
+        } else if(characters[char].bLeft) {
+            characters[char].sprite.x -= MOVEMENT_SPEED;
+        }
     }
 }
 
@@ -119,7 +118,7 @@ function bootstrap() {
 }
 
 function loadDoneHandler() {
-    var data = new createjs.SpriteSheet({
+    char_spritesheet = new createjs.SpriteSheet({
         "images": [loader.getResult("character")],
         "frames": {"regX": 16, "height": 48, "count": 16, "regY": 24, "width": 32},
         "animations": {
@@ -135,15 +134,23 @@ function loadDoneHandler() {
         }
     });
     
-    var sprite = new createjs.Sprite(data, "down");
-    
-    character = new Agriculture.Character(sprite);
-    character.sprite.setTransform(50 ,50,1,1);
-    character.sprite.framerate = 10;
-    stage.addChild(character.sprite);
+    character = addNewCharacter(50,50);
     
     createjs.Ticker.timingMode = createjs.Ticker.RAF;
     createjs.Ticker.addEventListener("tick", tick);
+}
+
+function addNewCharacter(posX, posY) {
+    var sprite = new createjs.Sprite(char_spritesheet, "down");
+    
+    var char = new Agriculture.Character(sprite);
+    char.sprite.setTransform(posX ,posY,1,1);
+    char.sprite.framerate = 10;
+    stage.addChild(char.sprite);
+    
+    characters.push(char);
+    
+    return char;
 }
 
 function tick(event) {
