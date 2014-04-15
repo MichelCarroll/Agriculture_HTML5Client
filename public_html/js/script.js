@@ -1,6 +1,7 @@
 
 var stage = null;
 var socket = null;
+var map = null;
 
 var characters = [];
 var player = null;
@@ -13,7 +14,7 @@ var KEYCODE_LEFT = 37,
 var MOVEMENT_SPEED = 5;
 
 var VELOCITY_PROCESS_INTERVAL = 50;
-var POSITION_HEARTBEAT_INTERVAL = 500;
+var POSITION_HEARTBEAT_INTERVAL = 100;
 
 var char_spritesheet;
 
@@ -106,12 +107,28 @@ function loadDoneHandler() {
         char.updateNickname(data.nickname);
     });
     
+    socket.on('update-map', function (data) {
+        var tilesetData = data.tileset;
+        if(map) {
+            map.unload();
+        }
+        map = new Agriculture.Map(stage, tilesetData);
+        map.load();
+        refreshCharacters();
+    });
+    
     createjs.Ticker.timingMode = createjs.Ticker.RAF;
     createjs.Ticker.addEventListener("tick", tick);
 }
 //============================================
 //============================================
 
+function refreshCharacters() {
+    for(p in characters) {
+        stage.removeChild(characters[p]);
+        stage.addChild(characters[p]);
+    }
+}
 
 function keyDown(event) {
     switch(event.keyCode) {
